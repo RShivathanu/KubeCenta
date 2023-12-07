@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres
+          env:
+            - name: POSTGRES_DB
+              value: postgres_db
+            - name: POSTGRES_USER
+              value: ampcome
+            - name: POSTGRES_PASSWORD
+              value: shiva
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - name: psqldata
+              mountPath: /var/lib/psql         # this is your container path from where your data will be stored
+      volumes:
+        - name: psqldata
+          persistentVolumeClaim:
+            claimName: psql-pv    # PVC claim name
+
+---
+  
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service
+spec:
+  selector:
+    app: postgres
+  ports:
+    - protocol: TCP
+      port: 5432
+      targetPort: 5432
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: psql-pv
+spec:
+  capacity:
+    storage: 256Mi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: /home/docker/hasura/psqldata
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: psql-pv
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 256Mi

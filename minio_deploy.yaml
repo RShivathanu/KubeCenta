@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minio-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: minio
+  template:
+    metadata:
+      labels:
+        app: minio
+    spec:
+      containers:
+      - name: minio
+        image: quay.io/minio/minio:latest
+        command:
+        - /bin/bash
+        - -c
+        args: 
+        - minio server /data --console-address :9090
+        envFrom:
+        - configMapRef:
+            name: minio-env
+        volumeMounts:
+        - mountPath: /data
+          name: minio-storage # Corresponds to the `spec.volumes` Persistent Volume
+  # nodeSelector:
+  #   kubernetes.io/hostname: kubealpha.local # Specify a node label associated to the Worker Node on which you want to deploy the pod.
+      volumes:
+        - name: minio-storage
+          persistentVolumeClaim:
+            claimName: minio-pv-claim
+    # hostPath: # MinIO generally recommends using locally-attached volumes
+    #   path: /mnt/disk1/data # Specify a path to a local drive or volume on the Kubernetes worker node
+    #   type: DirectoryOrCreate # The path to the last directory must exist
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: minio-pv-volume
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/mnt/data"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: minio-pv-claim
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio-service
+spec:
+  selector:
+    app: minio
+  ports:
+    - protocol: TCP
+      name: apache
+      port: 9090
+      targetPort: 9090
+      nodePort: 30006
+  type: NodePort
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: minio-env
+data:
+  MINIO_ROOT_USER: ampcome
+  MINIO_ROOT_PASSWORD: shivaAmpcome

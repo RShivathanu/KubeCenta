@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hasura-storage-deploy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hasura-storage1
+  template:
+    metadata:
+      labels:
+        app: hasura-storage1
+    spec:
+      containers:
+      - name: hasura-storage1
+        # image: nhost/hasura-storage:0.2.3
+        image: nhost/hasura-storage:0.5.0
+        args:
+        - serve
+        ports:
+        - containerPort: 8000
+        envFrom:
+        - configMapRef:
+            name: storage-env
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: storagesvc
+spec:
+  selector:
+    app: hasura-storage1
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000
+      nodePort: 30011
+  type: NodePort
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: storage-env
+data:
+  HASURA_METADATA: '1'
+  HASURA_ENDPOINT: http://192.168.49.2:30002/v1
+  HASURA_GRAPHQL_ADMIN_SECRET: hello123
+  POSTGRES_MIGRATIONS: '1'
+  POSTGRES_MIGRATIONS_SOURCE: postgres://ampcome:shiva@postgres-service:5432/postgres_db?sslmode=disable
+  S3_ACCESS_KEY: ampcome
+  S3_SECRET_KEY: shivaAmpcome
+  S3_ENDPOINT: http://192.168.49.2:30006
+  S3_BUCKET: nhost

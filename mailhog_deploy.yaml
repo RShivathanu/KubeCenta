@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mailhog
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mailhog
+  template:
+    metadata:
+      labels:
+        app: mailhog
+    spec:
+      containers:
+      - name: mailhog
+        image: mailhog/mailhog
+        ports:
+        - containerPort: 8025  # MailHog web UI
+        - containerPort: 1025  # MailHog SMTP server
+        envFrom:
+        - configMapRef:
+            name: mailhog-env  
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mailhogsvc
+spec:
+  selector:
+    app: mailhog
+  ports:
+    - protocol: TCP
+      port: 8025  # External port for MailHog web UI
+      targetPort: 8025  # Port on the pod
+    # - protocol: TCP
+    #   port: 1025  # External port for MailHog SMTP server
+    #   targetPort: 1025  # Port on the pod
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mailhog-env
+data:
+  SMTP_HOST: mailhog
+  SMTP_PORT: '1025'
+  SMTP_PASS: password
+  SMTP_USER: user
+  SMTP_SECURE: 'false'
+  SMTP_SENDER: hasura-auth@example.com

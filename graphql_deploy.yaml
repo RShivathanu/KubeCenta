@@ -1,0 +1,98 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: graphql-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: graphql
+  template:
+    metadata:
+      labels:
+        app: graphql
+    spec:
+      containers:
+      - name: graphql-container
+        image: hasura/graphql-engine:v2.2.0
+        ports:
+        - containerPort: 8080
+        envFrom:
+        - configMapRef:
+            name: graphql-env
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+ name: hasurasvc  #service name (it can be any name)
+spec:
+ type: NodePort
+ ports:
+ - name: apache
+   nodePort: 30002 #node port mention the same in security group
+   port: 8080 #service port
+   targetPort: 8080 #container port
+   protocol: TCP
+ selector:     #mapping to pod
+   app: graphql
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: graphql-env
+data:
+  HASURA_GRAPHQL_DATABASE_URL: postgres://ampcome:shiva@postgres-service:5432/postgres_db
+  # HASURA_GRAPHQL_JWT_SECRET: '{"type":"HS256", "key":"5152fa850c02dc222631cca898ed1485821a70912a6e3649c49076912daa3b62182ba013315915d64f40cddfbb8b58eb5bd11ba225336a6af45bbae07ca873f3","issuer":"hasura-auth"}'
+  HASURA_GRAPHQL_JWT_SECRET: '{"type":"HS256", "key":"78bd06f5ae326167b8aead750641057ff85bfcaef098269fee28b1ee398d06f2550bacaba7852080cbddcaba4d63e155d5eade1c0f564e8701e427eea62a594a","issuer":"hasura-auth"}'
+  HASURA_GRAPHQL_ADMIN_SECRET: hello123
+  HASURA_GRAPHQL_UNAUTHORIZED_ROLE: public
+  HASURA_GRAPHQL_LOG_LEVEL: debug
+  HASURA_GRAPHQL_ENABLE_CONSOLE: 'true'
+
+
+
+
+
+
+
+# ---
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: hasura
+# spec:
+#   selector:
+#     app: hasura
+#   ports:
+#     - protocol: TCP
+#       port: 80
+#       targetPort: 8080
+
+# # Optional: If you want to use a persistent volume for data storage
+# apiVersion: v1
+# kind: PersistentVolume
+# metadata:
+#   name: hasura-pv
+# spec:
+#   capacity:
+#     storage: 1Gi
+#   accessModes:
+#     - ReadWriteOnce
+#   hostPath:
+#     path: "/path/on/host"  # Update with the path on your host machine
+
+# apiVersion: v1
+# kind: PersistentVolumeClaim
+# metadata:
+#   name: hasura-pvc
+# spec:
+#   accessModes:
+#     - ReadWriteOnce
+#   resources:
+#     requests:
+#       storage: 1Gi
+#   selector:
+#     matchLabels:
+#       app: hasura

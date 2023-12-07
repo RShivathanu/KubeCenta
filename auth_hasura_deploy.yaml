@@ -1,0 +1,123 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth
+  template:
+    metadata:
+      labels:
+        app: auth
+    spec:
+      containers:
+      - name: auth-container
+        image: ghcr.io/ampcome/centa-auth:latest
+        # image: nhost/hasura-auth
+        # image: nhost/hasura-auth:latest
+        # readinessProbe:
+        #   httpGet:
+        #     path: /healthz
+        #     port: 80
+        ports:
+        - containerPort: 4000
+        envFrom:
+        - configMapRef:
+            name: auth-env
+      imagePullSecrets:
+      - name: registry-cred
+
+# ---
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: authsvc
+# spec:
+#   selector:
+#     app: auth
+#     type: ClusterIP
+#   ports:
+#     - protocol: TCP
+#       port: 4000
+#       targetPort: 4000
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+ name: authsvc  #service name (it can be any name)
+spec:
+ type: NodePort
+ ports:
+ - name: apache
+   nodePort: 30009 #node port mention the same in security group
+   port: 4000 #service port
+   targetPort: 4000 #container port
+   protocol: TCP
+ selector:     #mapping to pod
+   app: auth
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: auth-env
+data:
+  HASURA_GRAPHQL_DATABASE_URL: postgres://ampcome:shiva@postgres-service:5432/postgres_db
+  HASURA_GRAPHQL_GRAPHQL_URL: http://192.168.49.2:30002/v1/graphql
+  AUTH_SMTP_HOST: mailhog
+  AUTH_SMTP_PORT: '1025'
+  HASURA_GRAPHQL_JWT_SECRET: '{"type":"HS256", "key":"78bd06f5ae326167b8aead750641057ff85bfcaef098269fee28b1ee398d06f2550bacaba7852080cbddcaba4d63e155d5eade1c0f564e8701e427eea62a594a","issuer":"hasura-auth"}'
+  HASURA_GRAPHQL_ADMIN_SECRET: hello123
+  HASURA_GRAPHQL_ENABLE_ALLOWLIST: 'true'
+  AUTH_CLIENT_URL: http://localhost:4000
+  AUTH_ACCESS_CONTROL_ALLOWED_REDIRECT_URLS: https://mycenta-new-dev.netlify.app,https://centa-admin.netlify.app
+  AUTH_SERVER_URL: https://api-mycenta-dev.ampcome.app/v1/auth
+  AUTH_SMTP_HOST: smtp-relay.sendinblue.com
+  AUTH_SMTP_PORT: '587'
+  AUTH_SMTP_USER: kartik.menon@centa.org
+  AUTH_SMTP_PASS: ySwgs39RAz7jG2M
+  AUTH_SMTP_SENDER: kartik.menon@centa.org
+  AUTH_EMAIL_SIGNIN_EMAIL_VERIFIED_REQUIRED: 'true'
+  AUTH_USER_DEFAULT_ALLOWED_ROLES: admin,user,me,backend_ops,customer,teacher,parent,school_org_leader,group_org_leader,other
+  AUTH_PROVIDER: GOOGLE,FACEBOOK,APPLE
+  AUTH_MFA_ENABLED: 'true'
+  AUTH_MFA_TOTP_ISSUER: hasura-auth
+  AUTH_PROVIDER_GOOGLE_ENABLED: 'true'
+  AUTH_PROVIDER_GOOGLE_CLIENT_ID: 848885779509-a98frcn5pp5fto6hu7hodg5a2vqsr19o.apps.googleusercontent.com
+  AUTH_PROVIDER_GOOGLE_CLIENT_SECRET: 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
+  AUTH_PROVIDER_FACEBOOK_ENABLED: 'true'
+  AUTH_PROVIDER_FACEBOOK_CLIENT_ID: '1017078595912556'
+  AUTH_PROVIDER_FACEBOOK_CLIENT_SECRET: 6f35f1b9f770b8ed653fc2b44c72091e
+  AUTH_PROVIDER_APPLE_ENABLED: 'true'
+  AUTH_PROVIDER_APPLE_CLIENT_ID: "service.org.mycenta.app"
+  AUTH_PROVIDER_APPLE_TEAM_ID: 9T49J75RM7
+  AUTH_PROVIDER_APPLE_KEY_ID: 3DDYGNNBT5
+  AUTH_PROVIDER_APPLE_SCOPE: "name,email"
+  # AUTH_PROVIDER_APPLE_PRIVATE_KEY: "-----BEGIN PRIVATE KEY-----MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgHjiTfeSYvBMnFwY9eQH6nL8JAWsDOdrTBCw/Rh1GO3KgCgYIKoZIzj0DAQehRANCAASZmPWKXHVG2QVgU/JR4jUG7zhUEy/GJwIYfpSgH4nkU78GFD9Hg2xUHjw+2q0OkhPs7H5YPKlKerLJFudf9XUQ-----END PRIVATE KEY-----"
+  AUTH_PROVIDER_APPLE_PRIVATE_KEY: |
+    -----BEGIN PRIVATE KEY-----
+    MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgHjiTfeSYvBMnFwY9
+    eQH6nL8JAWsDOdrTBCw/Rh1GO3KgCgYIKoZIzj0DAQehRANCAASZmPWKXHVG2QVg
+    U/JR4jUG7zhUEy/GJwIYfpSgH4nkU78GFD9Hg2xUHjw+2q0OkhPs7H5YPKlKerLJ
+    Fudf9XUQ
+    -----END PRIVATE KEY-----
+  AUTH_SMS_PASSWORDLESS_ENABLED: 'true'
+  AUTH_SMS_PROVIDER: 'kapsystem'
+  AUTH_SMS_KAPSYSTEM_USERNAME: 'centatrans'
+  AUTH_SMS_KAPSYSTEM_PASSWORD: 'kap@user!123'
+  AUTH_SMS_KAPSYSTEM_SENDERID: 'CENTPO'
+  AUTH_SMS_KAPSYSTEM_ENTITYID: '1201159136059514334'
+  AUTH_SMS_KAPSYSTEM_HEADERID: '1205159159678879089'
+  AUTH_SMS_KAPSYSTEM_TMID: '1602100000000004471'
+  AUTH_SMS_KAPSYSTEM_TEMPLATEID: '1707160922929651422'
+
+
+# kubectl create secret docker-registry registry-cred \
+#   --docker-server=ghcr.io \
+#   --docker-username=msp-ampcome \
+#   --docker-password=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 \
+#   --docker-email=msp@ampcome.com
+
